@@ -51,3 +51,10 @@ def find_curve(oid_curve):
     raise UnknownCurveError("I don't know about the curve with oid %s."
                             "I only know about these: %s" %
                             (oid_curve, [c.name for c in curves]))
+
+def find_curve_name(name):
+    for c in curves:
+        if c.name == name:
+            return c
+    raise UnknownCurveError("Unknown curve %s. Supported curves: %s" %
+                            (name, [c.name for c in curves]))
