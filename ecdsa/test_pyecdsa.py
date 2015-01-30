@@ -370,6 +370,13 @@ class OpenSSL(unittest.TestCase):
         sig = sk.sign(data)
         self.assertTrue(vk.verify(sig, data))
 
+        # Test reading public key with explicit params
+        run_openssl("ec -in t/privkey.pem -pubout -out t/pubkey_ext.pem -param_enc explicit")
+        with open("t/pubkey_ext.pem", "rb") as e:
+            pubkey_pem = e.read()
+        vk_ext = VerifyingKey.from_pem_explicit(pubkey_pem, curve)
+        self.assertEqual(vk_ext.to_pem(), vk.to_pem())
+
     def test_to_openssl_nist192p(self):
         self.do_test_to_openssl(NIST192p)
     def test_to_openssl_nist224p(self):

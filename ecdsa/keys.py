@@ -52,6 +52,10 @@ class VerifyingKey:
         return klass.from_der(der.unpem(string))
 
     @classmethod
+    def from_pem_explicit(klass, string, curve):
+        return klass.from_der_explicit(der.unpem(string), curve)
+
+    @classmethod
     def from_der(klass, string):
         # [[oid_ecPublicKey,oid_curve], point_str_bitstring]
         s1,empty = der.remove_sequence(string)
@@ -71,6 +75,26 @@ class VerifyingKey:
         if empty != b(""):
             raise der.UnexpectedDER("trailing junk after pubkey pointstring: %s" %
                                     binascii.hexlify(empty))
+        assert point_str.startswith(b("\x00\x04"))
+        return klass.from_string(point_str[2:], curve)
+
+    @classmethod
+    def from_der_explicit(klass, string, curve):
+        s1, empty = der.remove_sequence(string)
+        if empty != b(""):
+            raise der.UnexpectedDER("trailing junk after DER pubkey objects: %s" %
+                                    binascii.hexlify(empty))
+
+        s2, point_str_bitstring = der.remove_sequence(s1)
+        oid_pk, _ = der.remove_object(s2)
+
+        assert oid_pk == oid_ecPublicKey, (oid_pk, oid_ecPublicKey)
+
+        point_str, empty = der.remove_bitstring(point_str_bitstring)
+        if empty != b(""):
+            raise der.UnexpectedDER("trailing junk after pubkey pointstring: %s" %
+                                    binascii.hexlify(empty))
+
         assert point_str.startswith(b("\x00\x04"))
         return klass.from_string(point_str[2:], curve)
 
