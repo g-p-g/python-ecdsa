@@ -86,9 +86,45 @@ class VerifyingKey:
                                     binascii.hexlify(empty))
 
         s2, point_str_bitstring = der.remove_sequence(s1)
-        oid_pk, _ = der.remove_object(s2)
-
+        oid_pk, rest = der.remove_object(s2)
         assert oid_pk == oid_ecPublicKey, (oid_pk, oid_ecPublicKey)
+
+        s3, empty = der.remove_sequence(rest)
+        if empty != b(""):
+            raise der.UnexpectedDER("trailing junk after DER pubkey params: %s" %
+                                    binascii.hexlify(empty))
+        one, rest = der.remove_integer(s3)
+        if one != 1:
+            raise der.UnexpectedDER("expected '1', got %d" % one)
+
+        s4, s = der.remove_sequence(rest)
+        oid_primefield, other = der.remove_object(s4)
+        param_p, empty = der.remove_integer(other)
+        if empty != b(""):
+            raise der.UnexpectedDER("trailing junk after primefield: %s" %
+                                    binascii.hexlify(empty))
+
+        s5, rest = der.remove_sequence(s)
+        param_a, other = der.remove_octet_string(s5)
+        param_b, _ = der.remove_octet_string(other)
+
+        gxgy, other = der.remove_octet_string(rest)
+        param_r, other = der.remove_integer(other)
+        one, empty = der.remove_integer(other)
+        if one != 1:
+            raise der.UnexpectedDER("expected '1', got %d" % one)
+        if empty != b(""):
+            raise der.UnexpectedDER("trailing junk after all DER pubkey params: %s" %
+                                    binascii.hexlify(empty))
+
+        for name, val in (('p', param_p), ):
+            meth = getattr(curve.curve, name)
+            if meth() != val:
+                raise der.UnexpectedDER("expected %s = %s, got %s" %
+                                        (name, curve.curve.a(), val))
+        if curve.generator.order() != param_r:
+            raise der.UnexpectedDER("expected r = %s, got %s" %
+                                    (curve.generator.order(), param_r))
 
         point_str, empty = der.remove_bitstring(point_str_bitstring)
         if empty != b(""):
